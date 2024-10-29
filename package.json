@@ -6,7 +6,7 @@
     "streamifier": "^0.1.1"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js
   },
   "name": "web322-app",
   "version": "1.0.0",
