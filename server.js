@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /***************************
 WEB322 – Assignment 03
 I declare that this assignment is my own work in accordance with Seneca 
@@ -17,11 +18,27 @@ GitHub Repository URL: https://github.com/jaybakaraniya3/web322-app
 const multer = require("multer");
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
+=======
+/*********************************************************************************
+
+WEB322 – Assignment 02
+I declare that this assignment is my own work in accordance with Seneca  Academic Policy.  No part *  of this assignment has been copied manually or electronically from any other source (including 3rd party web sites) or distributed to other students.
+
+Name: Jay Dilipbhai Bakaraniya 
+Student ID: 143370237
+Date: 2024-10-09
+Cyclic Web App URL: _______________________________________________________
+GitHub Repository URL: ______________________________________________________
+
+********************************************************************************/ 
+
+>>>>>>> origin/master
 const express = require('express');
 const path = require('path');
 const storeService = require('./store-service');
 
 const app = express();
+<<<<<<< HEAD
 const upload = multer();
 
 cloudinary.config({
@@ -33,6 +50,12 @@ cloudinary.config({
 
 app.use(express.static('public'));
 app.use(express.json());
+=======
+
+
+app.use(express.static('public'));
+
+>>>>>>> origin/master
 
 app.get('/', (req, res) => {
     res.redirect('/about');
@@ -51,6 +74,7 @@ storeService.initialize()
         });
 
         app.get('/items', (req, res) => {
+<<<<<<< HEAD
             const { category, minDate } = req.query;
             if (category) {
                 storeService.getItemsByCategory(category)
@@ -67,12 +91,21 @@ storeService.initialize()
             }
         });
 
+=======
+            storeService.getAllItems()
+                .then(data => res.json(data))  
+                .catch(err => res.status(500).json({ message: err }));
+        });
+
+
+>>>>>>> origin/master
         app.get('/categories', (req, res) => {
             storeService.getCategories()
                 .then(data => res.json(data))  
                 .catch(err => res.status(500).json({ message: err }));
         });
 
+<<<<<<< HEAD
         app.get('/item/:id', (req, res) => {
             storeService.getItemById(parseInt(req.params.id))
                 .then(item => res.json(item))
@@ -129,6 +162,35 @@ storeService.initialize()
             storeService.deleteItemById(id)
                 .then(() => res.json({ message: 'Item deleted successfully.' }))
                 .catch(err => res.status(404).json({ message: err }));
+=======
+
+        app.get('/item/:id', (req, res) => {
+            const id = parseInt(req.params.id);
+            const item = items.find(i => i.id === id);
+            if (!item) {
+                return res.status(404).json({ message: 'Item not found.' });
+            }
+            res.json(item); 
+        });
+
+
+        app.delete('/delete-item/:id', (req, res) => {
+            const id = parseInt(req.params.id);
+            const index = items.findIndex(item => item.id === id);
+            if (index === -1) {
+                return res.status(404).json({ message: 'Item not found.' });
+            }
+
+
+            items.splice(index, 1);
+
+            fs.writeFile(path.join(__dirname, 'data', 'items.json'), JSON.stringify(items, null, 2), (err) => {
+                if (err) {
+                    return res.status(500).json({ message: 'Error deleting item.' });
+                }
+                res.json({ message: 'Item deleted successfully.' });
+            });
+>>>>>>> origin/master
         });
 
         app.get('*', (req, res) => {
