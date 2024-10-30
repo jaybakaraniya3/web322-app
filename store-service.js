@@ -7,139 +7,136 @@ distributed to other students.
 
 Name: Jay Dilipbhai Bakaraniya 
 Student ID: 143370237
-Date: 2024-10-26
+Date: 2024-10-25
 Replit Web App URL: https://replit.com/@jdbakaraniya/web322-app
 GitHub Repository URL: https://github.com/jaybakaraniya3/web322-app
 
 ****************************/
 
 
-const multer = require("multer");
-const cloudinary = require('cloudinary').v2;
-const streamifier = require('streamifier');
-const express = require('express');
+const fs = require('fs');
 const path = require('path');
-const storeService = require('./store-service');
 
-const app = express();
-const upload = multer();
+let items = [];
+let categories = [];
 
-cloudinary.config({
-    cloud_name: 'dzqoki4u4',
-    api_key: '122297413298853',
-    api_secret: 'GUAsQKOPNnIHefuzV5shxFUcSbs',
-    secure: true
-});
-
-app.use(express.static('public'));
-app.use(express.json());
-
-app.get('/', (req, res) => {
-    res.redirect('/about');
-});
-
-app.get('/about', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'about.html'));
-});
-
-storeService.initialize()
-    .then(() => {
-        app.get('/shop', (req, res) => {
-            storeService.getPublishedItems()
-                .then(data => res.json(data)) 
-                .catch(err => res.status(500).json({ message: err }));
-        });
-
-        app.get('/items', (req, res) => {
-            const { category, minDate } = req.query;
-            if (category) {
-                storeService.getItemsByCategory(category)
-                    .then(items => res.json(items))
-                    .catch(err => res.status(500).json({ message: err }));
-            } else if (minDate) {
-                storeService.getItemsByMinDate(minDate)
-                    .then(items => res.json(items))
-                    .catch(err => res.status(500).json({ message: err }));
-            } else {
-                storeService.getAllItems()
-                    .then(items => res.json(items))
-                    .catch(err => res.status(500).json({ message: err }));
+module.exports.initialize = function() {
+    return new Promise((resolve, reject) => {
+        fs.readFile(path.join(__dirname, 'data', 'items.json'), 'utf8', (err, data) => {
+            if (err) {
+                return reject(`Unable to read items.json: ${err.message}`);
             }
-        });
+            items = JSON.parse(data);
 
-        app.get('/categories', (req, res) => {
-            storeService.getCategories()
-                .then(data => res.json(data))  
-                .catch(err => res.status(500).json({ message: err }));
-        });
-
-        app.get('/item/:id', (req, res) => {
-            storeService.getItemById(parseInt(req.params.id))
-                .then(item => res.json(item))
-                .catch(err => res.status(404).json({ message: err }));
-        });
-
-        app.get('/items/add', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views', 'addItem.html')); 
-        });
-
-        app.post('/items/add', upload.single('featureImage'), (req, res) => {
-            let processItem = (imageUrl) => {
-                req.body.featureImage = imageUrl;
-        
-                storeService.addItem(req.body)
-                    .then(() => res.redirect('/items'))
-                    .catch(err => res.status(500).send("Error: " + err));
-            };
-
-            if (req.file) {
-                let streamUpload = (req) => {
-                    return new Promise((resolve, reject) => {
-                        let stream = cloudinary.uploader.upload_stream(
-                            (error, result) => {
-                                if (result) {
-                                    resolve(result);
-                                } else {
-                                    reject(error);
-                                }
-                            }
-                        );
-                        streamifier.createReadStream(req.file.buffer).pipe(stream);
-                    });
-                };
-
-                async function upload(req) {
-                    let result = await streamUpload(req);
-                    return result;
+            fs.readFile(path.join(__dirname, 'data', 'categories.json'), 'utf8', (err, data) => {
+                if (err) {
+                    return reject(`Unable to read categories.json: ${err.message}`);
                 }
+                categories = JSON.parse(data);
 
-                upload(req).then((uploaded) => {
-                    processItem(uploaded.url);
-                }).catch((err) => {
-                    console.error("Image upload failed:", err);
-                    res.status(500).send("Image upload failed");
-                });
+                resolve();
+            });
+        });
+    });
+};
+
+module.exports.getAllItems = function() {
+    return new Promise((resolve, reject) => {
+        if (items.length === 0) {
+            reject('No results returned');
+        } else {
+            resolve(items);
+        }
+    });
+};
+
+module.exports.getPublishedItems = function() {
+    return new Promise((resolve, reject) => {
+        const publishedItems = items.filter(item => item.published === true);
+        if (publishedItems.length === 0) {
+            reject('No results returned');
+        } else {
+            resolve(publishedItems);
+        }
+    });
+};
+
+module.exports.getCategories = function() {
+    return new Promise((resolve, reject) => {
+        if (categories.length === 0) {
+            reject('No results returned');
+        } else {
+            resolve(categories);
+        }
+    });
+};
+
+module.exports.addItem = function(itemData) {
+    return new Promise((resolve, reject) => {
+        itemData.published = itemData.published ? true : false;
+        itemData.id = items.length > 0 ? Math.max(...items.map(item => item.id)) + 1 : 1;
+
+        items.push(itemData);
+
+        fs.writeFile(path.join(__dirname, 'data', 'items.json'), JSON.stringify(items, null, 2), (err) => {
+            if (err) {
+                reject('Error saving item: ' + err.message);
             } else {
-                processItem("");
+                resolve(itemData);
             }
         });
-
-        app.delete('/delete-item/:id', (req, res) => {
-            const id = parseInt(req.params.id);
-            storeService.deleteItemById(id)
-                .then(() => res.json({ message: 'Item deleted successfully.' }))
-                .catch(err => res.status(404).json({ message: err }));
-        });
-
-        app.get('*', (req, res) => {
-            res.status(404).sendFile(path.join(__dirname, 'views', '404.html'));
-        });
-
-        const PORT = process.env.PORT || 8080;
-        app.listen(PORT, () => {
-            console.log(`Express http server listening on port ${PORT}`);
-        });
-    })
-    .catch(err => {
-        console.error(`Error initializing data: ${err}`); 
     });
+};
+
+module.exports.getItemsByCategory = function(category) {
+    return new Promise((resolve, reject) => {
+        const filteredItems = items.filter(item => item.category === category);
+        if (filteredItems.length === 0) {
+            reject('No results returned');
+        } else {
+            resolve(filteredItems);
+        }
+    });
+};
+
+module.exports.getItemsByMinDate = function(minDateStr) {
+    return new Promise((resolve, reject) => {
+        const minDate = new Date(minDateStr);
+        const filteredItems = items.filter(item => new Date(item.postDate) >= minDate);
+
+        if (filteredItems.length === 0) {
+            reject('No results returned');
+        } else {
+            resolve(filteredItems);
+        }
+    });
+};
+
+module.exports.getItemById = function(id) {
+    return new Promise((resolve, reject) => {
+        const item = items.find(item => item.id === id);
+        if (!item) {
+            reject('No result returned');
+        } else {
+            resolve(item);
+        }
+    });
+};
+
+module.exports.deleteItemById = function(id) {
+    return new Promise((resolve, reject) => {
+        const index = items.findIndex(item => item.id === id);
+        if (index === -1) {
+            return reject('Item not found');
+        }
+
+        items.splice(index, 1);
+        fs.writeFile(path.join(__dirname, 'data', 'items.json'), JSON.stringify(items, null, 2), (err) => {
+            if (err) {
+                reject('Error saving item: ' + err.message);
+            } else {
+                resolve();
+            }
+        });
+    });
+};
